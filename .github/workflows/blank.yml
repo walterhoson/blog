@@ -1,0 +1,61 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the main branch
+on:
+  push:
+    branches: 
+      - main
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  deploy:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    name: Deploy Tech Blog 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true # Checkout private submodules(themes or something else).
+
+      # Caching dependencies to speed up workflows. (GitHub will remove any cache entries that have not been accessed in over 7 days.)
+      - name: Setup node
+        # 设置 node.js 环境
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+
+      - name: Cache node modules
+        # 设置包缓存目录，避免每次下载
+        uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install hexo dependencies
+        # 下载 hexo-cli 脚手架及相关安装包
+        run: |
+          npm install -g hexo-cli
+          npm install
+
+      - name: Generate files
+        # 编译 markdown 文件
+        run: |
+          hexo clean
+          hexo generate
+          pwd
+        
+      - name: Deploy to Server
+        uses: AEnterprise/rsync-deploy@v1.0
+        env:
+         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)		         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)
+         ARGS: -avz --delete # must have this variable		         ARGS: -avz --delete # must have this variable
+         SERVER_PORT: ${{ secrets.SSH_PORT }} # SSH port		         SERVER_PORT: "22" # SSH port
+         FOLDER: ./public # folder to push (./ is the root of current repo)		         FOLDER: ./ # folder to push (./ is the root of current repo)
+         SERVER_IP: ${{ secrets.SSH_HOST }} # use pre-configured ssh_host value (e.g., IP or domain.com）		         SERVER_IP: ${{ secrets.SSH_HOST }} # use pre-configured ssh_host value (e.g., IP or domain.com）
+         USERNAME: ${{ secrets.SSH_USERNAME }} # use pre-configured ssh_username value		         USERNAME: ${{ secrets.SSH_USERNAME }} # use pre-configured ssh_username value
+         SERVER_DESTINATION: /var/www/ # put your repo files on this directory of the remote server
+      
