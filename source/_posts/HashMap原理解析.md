@@ -33,7 +33,7 @@ HashMap 也是按照类似 lazy-load 的原则，在首次实例化时只是进�
 
 举个🌰，当 table 较小时，length - 1 的高16位就永远是0
 
-![运算过程](/pic/image-20201119160550156.png)
+![运算过程](../image-20201119160550156.png)
 
 
 此时 n - 1 的高16位0和未处理的 hashCode 高16位相与，永远是0。当出现两个 hashCode 低16位相同，高16位不同时，相与运算出来的结果就相同了，就产生了 hash 碰撞。
@@ -56,7 +56,7 @@ resize 中一个有意思的地方，在扩容之后进行 rehash，因为每次
 
 #### 扩容前后hash值未发生变化
 
-![运算过程](/pic/image-20201119161908634.png)
+![运算过程](../image-20201119161908634.png)
 
 
 
@@ -149,16 +149,16 @@ void transfer(Entry[] newTable, boolean rehash) {
 
 并发情况下，Thread 1与 Thread 2 同时进行扩容。假设原表为：
 
-![开始状态](/pic/Snipaste_2020-11-19_16-36-01.png)
+![开始状态](../Snipaste_2020-11-19_16-36-01.png)
 
 
 Thread 1 在开始扩容时，执行到 Entry<K,V> next = e.next;  此时时间片用完，进入阻塞。此时 Thread 1 中 e = 6，next = e.next = 7。
 
 此时 Thread 2 开始扩容，假设 Thread 2 完成了扩容，便于理解假设扩容数据迁移后，index 不变，因为链表迁移使用的头插法，此时链表变成了 8 -> 7 -> 6，执行结束。此时哈希表变成如下状态：
 
-![Thread 2 执行后](/pic/Snipaste_2020-11-19_16-31-39.png)
+![Thread 2 执行后](../Snipaste_2020-11-19_16-31-39.png)
 
 此时，Thread 1 拿到时间片继续执行，e = 6，e.next = 7。而目前链表中，7.next = 6，这时 6 和 7 两个节点形成了循环链表，此时 get 一个链表中不存在的 key，就出现了死循环。
 
-![Thread 1 继续执行](/pic/Snipaste_2020-11-19_16-32-06.png)
+![Thread 1 继续执行](../Snipaste_2020-11-19_16-32-06.png)
 
