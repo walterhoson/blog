@@ -74,10 +74,11 @@ redolog 写入操作被拆成了两步，prepare 和 commit。为了让两份日
 
 + 时刻A，写入 redolog 处于 prepare 阶段之后、写 binlog 之前，发生了 crash，由于此时 binlog 还没写，redolog 也还没提交，所以崩溃恢复的时候，这个事务会回滚。binlog 还没写，所以也不会传到备库。
 
-+ 时刻B，binlog 写完，redolog 没有 commit。这个时候需要做判断：
++ binlog 写完，redolog 没有 commit。这个时候需要做判断：
+  1. redolog 中已有 commit 标识，表示 redolog 事务时完整的，则直接提交。
+  2. redolog 中事务只有完整 prepare，则判断对应的事务 binlog 是否存在并完整，是则提交事务，否则回滚。
 
-  + redolog 中已有 commit 标识，表示 redolog 事务时完整的，则直接提交。
-  + redolog 中事务只有完整 prepare，则判断对应的事务 binlog 是否存在并完整，是则提交事务，否则回滚。时刻B 属于 binglog 完整，所以直接提交。
+时刻B 属于 binlog 完整，所以直接提交。
 
 
 ### 相关参数
