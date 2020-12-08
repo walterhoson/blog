@@ -1,5 +1,5 @@
 ---
-title: MySQL性能问题分析
+title: MySQL性能问题分析-函数操作及类型问题
 date: 2020-10-09 23:20:10
 tags: [集合,JAVA]
 description: 
