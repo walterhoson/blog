@@ -1,10 +1,10 @@
 ---
 title: MySQL性能问题分析-函数操作及类型问题
 date: 2020-10-09 23:20:10
-tags: [集合,JAVA]
+tags: [MySQL,笔记]
 description: 
 read_more: 阅读全文
-categories: Java
+categories: MySQL
 toc: true
 ---
 
