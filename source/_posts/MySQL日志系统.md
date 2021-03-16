@@ -1,8 +1,8 @@
 ---
 title: MySQL更新语句及redo log
 date: 2020-08-28 22:01:00
-tags: [MySQL,笔记]
-description: 
+tags: [MySQL,note]
+description: 分析MySQL中的日志模块，以及在整个流程中的用途...
 read_more: 阅读全文
 categories: MySQL
 toc: true

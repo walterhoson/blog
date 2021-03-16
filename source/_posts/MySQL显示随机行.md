@@ -1,8 +1,8 @@
 ---
 title: MySQL显示随机行-深入理解排序
 date: 2020-10-04 23:11:26
-tags: [MySQL,笔记]
-description: 
+tags: [MySQL,note]
+description: 将从显示随机行的需求切入，深入理解MySQL排序的原理、排序的流程，及排序的性能对比...
 read_more: 阅读全文
 categories: MySQL
 toc: true

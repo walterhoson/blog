@@ -1,15 +1,17 @@
 ---
 title: MySQL前缀索引优劣分析
 date: 2020-09-23 22:53:20
-tags: [MySQL,笔记]
-description: 
+tags: [MySQL,note]
+description:  
 read_more: 阅读全文
 categories: MySQL
 toc: true
 ---
 
 
-MySQL 支持前缀索引的，可以定义字符串的一部分作为索引。默认地， 如果创建索引的语句不指定前缀长度，那么索引就会包含整个字符串。
+MySQL 支持前缀索引的，可以定义字符串的一部分作为索引。默认若创建索引的语句不指定前缀长度，那么索引就会包含整个字符串。
+
+<!-- more -->
 
 ```sql
 -- index1包含整个字符串
@@ -18,7 +20,7 @@ alter table User add index index1(email);
 alter table User add index index2(email(6));
 ```
 
-<!-- more -->
+
 
 
 ![index1-完整索引](image-20200923225333337.png)

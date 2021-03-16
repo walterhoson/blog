@@ -1,7 +1,7 @@
 ---
 title: MySQL基础架构
 date: 2020-08-28 22:01:00
-tags: [MySQL,笔记]
+tags: [MySQL,note]
 description: 
 read_more: 阅读全文
 categories: MySQL

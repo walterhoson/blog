@@ -1,8 +1,8 @@
 ---
 title: MySQL中count原理浅析
 date: 2020-09-28 20:59:40
-tags: [MySQL,笔记]
-description: 
+tags: [MySQL,note]
+description: 浅析MySQL中count的基本实现原理，并以此分析不同的count方式之间的性能...
 read_more: 阅读全文
 categories: MySQL
 toc: true
@@ -14,8 +14,6 @@ toc: true
 + InnoDB 引擎执行 count(*) 时，需要把数据一行一行地从引擎里面读出来，然后累积计数。
 
 为什么 InnoDB 不跟 MyISAM 一样，也把数字存起来呢？
-
-<!--more-->
 
 因为即使是在同一个时刻的多个查询，由于多版本并发控制（MVCC）的原因，InnoDB表“应该返回多少行”也是不确定的。只好把数据一行一行地读出依次判断，可见的行才能够用于计算“基于这个查询”的表的总行数。
 

@@ -1,8 +1,8 @@
 ---
 title: MySQL事务隔离机制
 date: 2020-09-18 22:20:00
-tags: [MySQL,笔记]
-description: 
+tags: [MySQL,note]
+description: 分析MySQL中的事务隔离机制，并分析事务隔离实现的原理...
 read_more: 阅读全文
 categories: MySQL
 toc: true
@@ -18,8 +18,6 @@ MySQL中，InnoDB 支持事务，MyISAM 引擎不支持事务。
 ## 隔离性与隔离级别
 
 事务的四大特性：ACID（Atomicity、Consistency、Isolation、Durability）即原子性、一致性、隔离性、持久性。
-
-<!-- more -->
 
 SQL标准的事务隔离级别：
 

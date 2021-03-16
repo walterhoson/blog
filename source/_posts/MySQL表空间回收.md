@@ -1,7 +1,7 @@
 ---
 title: MySQL表空间回收机制
 date: 2020-09-27 21:49:10
-tags: [MySQL,笔记]
+tags: [MySQL,note]
 description: 
 read_more: 阅读全文
 categories: MySQL
@@ -11,6 +11,8 @@ toc: true
 
 一个 InnoDB 表包含两部分，即:**表结构定义**和**数据**。在 MySQL 8.0 版本以前，表结构是存在以 .frm 为后缀的文件里。MySQL 8.0 版本，则已经允许把表结构定义放在系统数据表中了。因为表结构定义占用的空间很小，主要的是表数据。
 
+<!-- more -->
+
 ## 参数 innodb_file_per_table
 
 表数据既可以存在共享表空间里，也可以是单独的文件。这个行为是由参数 innodb_file_per_table 控制
@@ -19,7 +21,6 @@ toc: true
 
 2. ON 表示，每个 InnoDB 表数据存储在一个以 .ibd 为后缀的文件中。 从 MySQL 5.6.6 版本开始，默认值就是 ON。
 
-<!-- more -->
 
 **建议都设置为ON**。因为一个表单独存储为一个文件更容易管理，而且在不需要这个表时，通过 drop table 命令，系统就会直接删除这个文件。而如果是放在共享表空间中，即使表删掉了，空间也是不会回收的。
 

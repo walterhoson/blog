@@ -1,7 +1,7 @@
 ---
 title: MySQL中OrderBy工作原理
 date: 2020-09-30 10:51:56
-tags: [MySQL,笔记]
+tags: [MySQL,note]
 description: 
 read_more: 阅读全文
 categories: MySQL
@@ -12,9 +12,9 @@ toc: true
 
 给字段加上索引，避免全表扫描。在排序时，执行计划中 **Extra中显示 “Using filesort” 表示需要排序**，MySQL会给每个线程分配一块内存用于排序，称为 **sort_buffer**。
 
-语句的执行流程如下：
-
 <!--more-->
+
+语句的执行流程如下：
 
 1. 初始化 sort_buffer，确定放入要查询的字段
 2. 从where条件字段的索引上找到满足条件的主键id

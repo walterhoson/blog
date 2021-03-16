@@ -1,7 +1,7 @@
 ---
 title: MySQL性能问题分析-锁及索引问题
 date: 2020-10-15 22:10:39
-tags: [MySQL,笔记]
+tags: [MySQL,note]
 description: 
 read_more: 阅读全文
 categories: MySQL
@@ -11,11 +11,11 @@ toc: true
 
 MySQL 数据库本身就有很大的压力，导致数据库服务器 CPU 占用率很高或 ioutil（IO 利用率）很高，是导致SQL卡慢的最直接原因。
 
+<!--more-->
+
 ## 查询长时间不返回
 
 大概率是表被锁住了，首先执行 show processlist 命令进行分析。
-
-<!--more-->
 
 ### 等MDL锁
 

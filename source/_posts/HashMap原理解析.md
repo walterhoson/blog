@@ -1,7 +1,7 @@
 ---
 title: HashMap原理解析
 date: 2020-11-19 15:20:00
-tags: [集合,JAVA]
+tags: [Collection,JAVA]
 description: 
 read_more: 阅读全文
 categories: Java
@@ -12,16 +12,15 @@ toc: true
 ---
 
 
-
 HashMap是应用广泛的哈希表实现，拥有较强的性能表现，put 和 get 操作可以达到常数时间的性能，当然其性能表现非常依赖哈希码的有效性。
+
+<!-- more -->
 
 # 基础原理
 
 ## 内部实现
 
 内部可以看作数组（Node<K,V>[] table）和链表结合组合成的复合结构，数组被分为一个个桶（bucket），通过哈希值决定了键值对在这个数组的寻址。哈希值相同的键值对，则以链表形式存储。如果链表大小超过阈值（TREEIFY_THRESHOLD, 8），链表就会被改造为树形结构（红黑树）。
-
-<!-- more -->
 
 HashMap 也是按照类似 lazy-load 的原则，在首次实例化时只是进行初始化，在首次 put 数据时，判断如果 table=null，则调用 resize 方法进行初始化（resize 方法作用初始化或扩容）
 
