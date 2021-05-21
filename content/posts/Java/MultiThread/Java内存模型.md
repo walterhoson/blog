@@ -15,8 +15,8 @@ date: '2020-05-01T23:11:+08:00'
 lastmod: '2020-05-01T23:11:20+08:00'
 featuredImage: ''
 draft: false
-
 ---
+
 
 
 从理论方面分析 Java 内存模型，以及其解决了线程安全的问题的原理。
@@ -191,8 +191,8 @@ public FinalFieldExample() {
 
 ### volatile语义的内存屏障
 
-+ 在每个 volatile 写操作前插入 StoreStore 屏障，在写操作后插入 StoreLoad 屏障；
-+ 在每个 volatile 读操作前插入 LoadLoad 屏障，在读操作后插入 LoadStore 屏障；
++ 在每个 volatile 写操作前插入 StoreStore 屏障（禁止普通写和volatile写重排序），在写操作后插入 StoreLoad 屏障（防止volatile写和之后可能的volatile读/写重排序）；
++ 在每个 volatile 读操作前插入 LoadLoad 屏障（禁止之后的读与volatile读重排序），在读操作后插入 LoadStore 屏障（禁止后面的写操作和之前的volatile读重排序）；
 
 ### final语义的内存屏障
 
@@ -319,6 +319,8 @@ Thread 对象的 `start()` 方法 happens-before 于此线程的每一个动作�
 ## 参考资料
 
 《Java并发编程实战》
+
+
 
 
 > 本博客文章除特别声明外均为原创，采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0 许可协议</a>进行许可。超出<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0 许可协议</a>的使用请联系作者获得授权。
