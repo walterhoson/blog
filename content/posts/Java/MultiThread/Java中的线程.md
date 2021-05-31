@@ -119,13 +119,5 @@ Java 刚创建出来的 Thread 对象就是 NEW 状态，而创建 Thread 对象
 
 
 
-## 参考资料
-
-《Java并发编程之美》
-
-《Java并发编程实战》
 
 
-
-
-> 本博客文章除特别声明外均为原创，采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0 许可协议</a>进行许可。超出<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0 许可协议</a>的使用请联系作者获得授权。
