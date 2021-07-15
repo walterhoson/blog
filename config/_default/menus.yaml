@@ -5,6 +5,9 @@ main:
   - name: Categories
     url: /categories/
     weight: 2
+  - name: Series
+    url: '/series/'
+    weight: 3    
   # - name: About
   #   url: '#about'
-  #   weight: 3
+  #   weight: 4
