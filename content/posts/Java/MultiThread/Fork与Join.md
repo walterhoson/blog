@@ -1,6 +1,6 @@
 ---
 title: Fork 与 Join
-description: 简要分析 Java 中的 CompletionService 类的原理，以及使用其批量执行异步任务
+description: 简要分析 Java 中的 Fork 与 Join 的工作原理，以及如何支持分治模型
 toc: true
 authors: 
     - WayneShen
@@ -19,7 +19,7 @@ draft: false
 
 </br>
 
-简要分析 Java 中的 CompletionService 类的原理，以及使用其批量执行异步任务
+简要分析 Java 中的 Fork 与 Join 的工作原理，以及如何支持分治模型
 
 <!--more-->
 
