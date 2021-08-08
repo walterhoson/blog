@@ -26,7 +26,7 @@ draft: false
 
 ## String
 
-String 底层数据结构有 ``embstr`` 和 ``int``。Redis 的字符串并非 C 语言的字符串（即以空字符’\0’结尾的字符数组），Redis 构建了一种名为 ``简单动态字符串``（simple dynamic string，SDS）的抽象类型，并作为默认字符串表示。
+String 底层数据结构有 `embstr`、`int` 和 `raw`。Redis 的字符串并非 C 语言的字符串（即以空字符’\0’结尾的字符数组），Redis 构建了一种名为 ``简单动态字符串``（simple dynamic string，SDS）的抽象类型，并作为默认字符串表示。
 
 ```c
 struct sdshdr{
