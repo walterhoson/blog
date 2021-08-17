@@ -80,6 +80,11 @@ show binlog events in 'master.000001';
 
 这条 delete 产生了一个 warning，通过``show warnings;``可以得到。原因是当前 binlog 设置为 statement 格式，并且语句中有 limit，这个命令可能是 unsafe 的。**delete 带 limit，可能出现主备数据不一致的情况**。（匹配多行，只删除一行，可能主备库中通过不同索引，匹配出来的首行不一样）MySQL 认为是有风险的。
 
+补充：
+
+GTID（global transaction id）是对于一个已提交事务的编号，并且是一个全局唯一的编号。GTID 实际上是由 UUID + TID 组成的，其中 UUID 是 MySQL 实例的唯一标识, TID 表示该实例上已经提交的事务数量，并且随着事务提交单调递增，这种方式保证事务在集群中有唯一的ID，强化了主备一致及故障恢复能力。
+
+
 ### row 格式
 
 当 `binlog_format= row` 时，binlog 中没有 SQL 语句原文，变为了 event：Table_map 和 Delete_rows。

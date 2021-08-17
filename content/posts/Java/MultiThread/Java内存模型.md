@@ -297,6 +297,37 @@ Thread 对象的 `start()` 方法 happens-before 于此线程的每一个动作�
 
 编译器并不是会对所有的指令进行重排序，存在数据依赖规则的就不会进行重排序（前者影响后者）。写后读、写后写、读后写，不会进行重排序。
 
+## Double-Check 的问题
+
+通常在 Java 中实现单例会使用到 Double-Check 双重检测模式。
+
+```java
+public class Singleton {  
+
+    private static Singleton instance = null;  
+    private Singleton() {}  
+
+    public static Singleton getInstance() {  
+        if (instance == null) {  //0
+            synchronized (Singleton.class) {// 1  
+                if (instance == null) {// 2  
+                    instance = new Singleton();// 3  
+                }  
+            }  
+        }  
+        return instance;  
+    }  
+}
+```
+
+因为无序写入的存在，即 Java 某线程在初始化构造函数完成前，另一个线程就拿到这个还未构造完全的对象的引用，导致报错。
+
+但在 JDK1.5 之后的版本，增强了 JMM 的实现，增强了 volatile 语意，禁止 volatile 变量的读写进行重排序。
+
+对应 Happens-before 原则对多线程内存可见性的规则性描述：
+
+> volatile 变量规则：对一个变量的写操作先行发生于后面对这个变量的读操作。
+
 ## 参考资料
 
 《Java 并发编程实战》
