@@ -19,6 +19,8 @@ draft: false
 
 主要分析 RocketMQ 各个模块的含义，以及将源码进行编译运行
 
+<!--more-->
+
 ## 源码模块
 
 | 名称          | 作用                                         |
@@ -46,7 +48,7 @@ draft: false
 mvn -Prelease-all -DskipTests clean install -U
 ```
 
-## 启动
+## 启动配置
 
 ### namesrv
 
@@ -65,7 +67,7 @@ mvn -Prelease-all -DskipTests clean install -U
 
 org.apache.rocketmq.namesrv.NamesrvStartup，启动
 
-#### broker
+### broker
 
 设置 VM 参数
 
