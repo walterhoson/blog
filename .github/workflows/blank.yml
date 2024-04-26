@@ -32,7 +32,7 @@ jobs:
         run: hugo --minify
         
       - name: Deploy to Server
-        uses: AEnterprise/rsync-deploy@v1.0
+        uses: AEnterprise/rsync-deploy@v1.0.2
         env:
          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)		         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)
          ARGS: -avz --delete # must have this variable		         ARGS: -avz --delete # must have this variable
