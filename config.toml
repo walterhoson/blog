@@ -2,3 +2,6 @@ baseURL = "http://localhost:1313"
 languageCode = "en-us"
 title = "Wayne's Blog"
 theme = "eureka"
+
+[params]
+style = "wayne"
