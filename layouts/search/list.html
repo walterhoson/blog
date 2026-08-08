@@ -1,0 +1,40 @@
+{{ define "main" }}
+  <section class="search-page">
+    <article class="prose mx-6 my-8">
+      <h1>Search</h1>
+    </article>
+    <div class="search-shell">
+      <div class="search-shell__inner">
+        <p class="search-page__description">Search across all posts.</p>
+        <form class="blog-search-form" id="blog-search-form" role="search">
+          <label class="sr-only" for="blog-search-input">Search posts</label>
+          <div class="blog-search-input-wrap">
+            <svg class="blog-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+            </svg>
+            <input
+              id="blog-search-input"
+              name="q"
+              type="search"
+              autocomplete="off"
+              placeholder="Search posts..."
+            >
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+        </form>
+        <p class="blog-search-status" id="blog-search-status" aria-live="polite"></p>
+        <div class="blog-search-results" id="blog-search-results"></div>
+        <noscript>Search requires JavaScript.</noscript>
+      </div>
+    </div>
+  </section>
+  {{ $searchJS := resources.Get "js/search.js" | minify | fingerprint "sha384" }}
+  <script
+    id="blog-search-script"
+    src="{{ $searchJS.RelPermalink }}"
+    integrity="{{ $searchJS.Data.Integrity }}"
+    data-pagefind-base="{{ "/pagefind/" | relURL }}"
+    type="module"
+  ></script>
+{{ end }}

@@ -6,3 +6,5 @@
       "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, serif;
   }
 </style>
+{{- $blogCSS := resources.Get "css/blog.css" | minify | fingerprint "sha384" }}
+<link rel="stylesheet" href="{{ $blogCSS.Permalink }}" integrity="{{ $blogCSS.Data.Integrity }}">

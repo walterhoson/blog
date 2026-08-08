@@ -29,8 +29,20 @@ jobs:
           hugo-version: '0.100.0'
           extended: true
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install search dependencies
+        run: npm ci
+
       - name: Build
         run: hugo --minify
+
+      - name: Build search index
+        run: npm run search:index
         
       - name: Deploy to Server
         uses: AEnterprise/rsync-deploy@v1.0.2
