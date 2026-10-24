@@ -14,7 +14,7 @@ enableGitInfo: false
 summaryLength: 40
 
 defaultContentLanguage: en
-hasCJKLanguage: false # Set `true` for Chinese/Japanese/Korean.
+hasCJKLanguage: true # The posts are primarily written in Chinese.
 defaultContentLanguageInSubdir: false
 
 # Uncomment for google analytics

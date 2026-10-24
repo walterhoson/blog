@@ -11,7 +11,10 @@ main:
   - name: Series
     url: '/series/'
     weight: 4   
- 
+  - name: Search
+    url: '/search/'
+    weight: 5
+
   # - name: About
   #   url: '#about'
   #   weight: 4

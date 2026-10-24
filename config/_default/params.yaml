@@ -1,6 +1,6 @@
 mainSections:
   - posts
-description: This is Wayne's Blog.
+description: Wayne Shen's technical blog about database internals, query optimization, distributed databases, and production systems.
 
 repoEditURL:
 

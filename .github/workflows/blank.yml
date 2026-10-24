@@ -26,13 +26,26 @@ jobs:
         # 设置 Hugo 环境
         uses: peaceiris/actions-hugo@v2
         with:
-          hugo-version: '0.82.0'
+          hugo-version: '0.100.0'
+          extended: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install search dependencies
+        run: npm ci
 
       - name: Build
         run: hugo --minify
+
+      - name: Build search index
+        run: npm run search:index
         
       - name: Deploy to Server
-        uses: AEnterprise/rsync-deploy@v1.0
+        uses: AEnterprise/rsync-deploy@v1.0.2
         env:
          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)		         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # use pre-configured secret (the private key)
          ARGS: -avz --delete # must have this variable		         ARGS: -avz --delete # must have this variable
