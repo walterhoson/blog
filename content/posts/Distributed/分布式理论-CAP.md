@@ -10,7 +10,7 @@ tags:
 categories: 
     - Distributed
 series: []
-date: '2021-03-06T16:21:+08:00'
+date: '2021-03-06T16:21:00+08:00'
 lastmod: '2021-03-06T16:21:20+08:00'
 featuredImage: ''
 draft: false

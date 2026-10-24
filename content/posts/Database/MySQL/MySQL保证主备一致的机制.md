@@ -10,7 +10,7 @@ tags:
 categories: 
     - DataBase
 series: []
-date: '2020-08-29T07:51:+08:00'
+date: '2020-08-29T07:51:00+08:00'
 lastmod: '2020-08-29T07:51:20+08:00'
 draft: false
 ---
@@ -78,7 +78,7 @@ show binlog events in 'master.000001';
 + 第三行是真实执行的语句。在真实执行命令之前，还有一个“use 'test' ”命令。这条命令不是主动执行的，而是 MySQL 根据当前要操作的表所在的数据库，自行添加的。这样做可以保证日志传到备库去执行时，不论当前的工作线程在哪个库里，都能够正确地更新到 test 库的表 t。命令之后的 delete 语句，就是输入的 SQL 原文。可以看到，binlog“忠实”地记录了 SQL 命令，甚至连注释也一并记录了。
 + 最后一行是一个 COMMIT。可以看到里面写着 xid=61。（xid 用于崩溃恢复时，去 binlog 中查找完整的事务）
 
-这条 delete 产生了一个 warning，通过``show warnings;``可以得到。原因是当前 binlog 设置为 statement 格式，并且语句中有 limit，这个命令可能是 unsafe 的。**delete 带 limit，可能出现主备数据不一致的情况**。（匹配多行，只删除一行，可能主备库中通过不同索引，匹配出来的首行不一样）MySQL 认为是有风险的。
+这条 delete 产生了前 binlog 设置为 statement 格式，并且语句中有一个 warning，通过``show warnings;``可以得到。原因是当 limit，这个命令可能是 unsafe 的。**delete 带 limit，可能出现主备数据不一致的情况**。（匹配多行，只删除一行，可能主备库中通过不同索引，匹配出来的首行不一样）MySQL 认为是有风险的。
 
 补充：
 

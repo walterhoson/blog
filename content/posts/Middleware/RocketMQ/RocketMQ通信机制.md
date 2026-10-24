@@ -10,7 +10,7 @@ tags:
 categories: 
     - Middleware
 series: [RocketMQ]
-date: '2021-07-03T15:21:+08:00'
+date: '2021-07-03T15:21:00+08:00'
 lastmod: '2021-07-03T15:33:10+08:00'
 draft: false
 ---
