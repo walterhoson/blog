@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes · 给 MySQL 挂一台分析引擎 — 论文交互讲解</title>
+<style>
+/* ============ 工程蓝图风格：深蓝底白线 / 白底蓝线，琥珀黄警示色 ============ */
+:root{
+  --bg:#f2f6fd; --panel:#ffffff; --panel2:#e8effa;
+  --ink:#12284a; --dim:#4a6890; --line:#1d4e89; --hairline:#b9cdec;
+  --accent:#b06a00; --accent2:#d98e00; --ok:#1e7a4c; --bad:#b3352b;
+  --grid:rgba(29,78,137,.10); --chip:#e8effa; --shadow:rgba(18,40,74,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#081a33; --panel:#0c2447; --panel2:#0e2a52;
+    --ink:#e8f1ff; --dim:#9db8d9; --line:#7fb2e5; --hairline:#1e3f6e;
+    --accent:#ffb020; --accent2:#ffcf6b; --ok:#5fce9a; --bad:#ff7a6e;
+    --grid:rgba(127,178,229,.08); --chip:#12315e; --shadow:rgba(0,0,0,.5);
+  }
+}
+[data-theme="light"]{
+  --bg:#f2f6fd; --panel:#ffffff; --panel2:#e8effa;
+  --ink:#12284a; --dim:#4a6890; --line:#1d4e89; --hairline:#b9cdec;
+  --accent:#b06a00; --accent2:#d98e00; --ok:#1e7a4c; --bad:#b3352b;
+  --grid:rgba(29,78,137,.10); --chip:#e8effa; --shadow:rgba(18,40,74,.18);
+}
+[data-theme="dark"]{
+  --bg:#081a33; --panel:#0c2447; --panel2:#0e2a52;
+  --ink:#e8f1ff; --dim:#9db8d9; --line:#7fb2e5; --hairline:#1e3f6e;
+  --accent:#ffb020; --accent2:#ffcf6b; --ok:#5fce9a; --bad:#ff7a6e;
+  --grid:rgba(127,178,229,.08); --chip:#12315e; --shadow:rgba(0,0,0,.5);
+}
+html[data-fs="1"]{font-size:100%}
+html[data-fs="2"]{font-size:112.5%}
+html[data-fs="3"]{font-size:125%}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *{animation:none!important;transition:none!important}
+}
+body{
+  margin:0; color:var(--ink); background:var(--bg);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  font-size:1rem; line-height:1.75;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:28px 28px;
+}
+.mono{font-family:"SF Mono",Menlo,Consolas,"Courier New",monospace}
+.wrap{max-width:880px;margin:0 auto;padding:0 16px 96px}
+/* ---------- 顶栏 ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:8px;
+  padding:8px 16px;background:var(--panel);border-bottom:2px solid var(--line);
+}
+.topbar .t{font-weight:700;letter-spacing:.02em;margin-right:auto;font-size:.95rem}
+.topbar button,.ctl{
+  min-height:44px;min-width:44px;border:1.5px solid var(--line);background:var(--panel);
+  color:var(--ink);border-radius:6px;cursor:pointer;font-size:.9rem;padding:0 12px;
+}
+.topbar button:hover{background:var(--panel2)}
+#backBtn{border-color:var(--accent);color:var(--accent)}
+/* ---------- 图框（sheet） ---------- */
+section[data-hero],section[data-scene],section[data-quiz-sec]{
+  margin:28px 0;background:var(--panel);border:2px solid var(--line);border-radius:4px;
+  box-shadow:6px 6px 0 var(--shadow);
+}
+.sheetbar{
+  display:flex;align-items:baseline;gap:10px;padding:8px 14px;
+  border-bottom:2px solid var(--line);color:var(--dim);font-size:.8rem;letter-spacing:.08em;
+}
+.sheetbar .no{color:var(--accent);font-weight:700}
+.sheetbar .ttl{margin-left:auto;text-align:right}
+.sheetbody{padding:18px 18px 22px}
+h1{font-size:1.9rem;line-height:1.3;margin:.2em 0 .4em}
+h2{font-size:1.25rem;margin:.1em 0 .5em}
+.kicker{color:var(--accent);letter-spacing:.18em;font-size:.78rem;font-weight:700}
+.lede{font-size:1.06rem}
+.lede strong,.pt strong{color:var(--accent)}
+.pt{border-left:4px solid var(--accent);padding:2px 0 2px 12px;margin:14px 0 16px}
+.dim{color:var(--dim)}
+figure{margin:14px 0}
+figure svg, .chartsvg{width:100%;height:auto;display:block}
+figcaption{font-size:.82rem;color:var(--dim);margin-top:6px}
+svg text{fill:var(--ink)}
+svg .lb{fill:var(--dim);font-family:"SF Mono",Menlo,Consolas,monospace}
+svg .ac{fill:var(--accent)}
+/* ---------- 引用角标与标签 ---------- */
+sup.cite{
+  display:inline-block;min-width:1.25em;text-align:center;padding:0 .2em;margin:0 .1em;
+  font-size:.68em;line-height:1.5;border:1px solid var(--accent);border-radius:4px;
+  color:var(--accent);cursor:pointer;user-select:none;font-family:"SF Mono",Menlo,Consolas,monospace;
+}
+sup.cite:hover{background:var(--accent);color:var(--panel)}
+.tag{
+  display:inline-block;font-size:.68em;padding:.05em .5em;margin:0 .2em;border-radius:999px;
+  border:1px dashed var(--dim);color:var(--dim);vertical-align:.15em;
+}
+/* ---------- 交互部件 ---------- */
+.btn{
+  display:inline-block;min-height:44px;padding:8px 18px;margin:4px 6px 4px 0;
+  border:2px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--ink);
+  font-size:.95rem;cursor:pointer;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#081a33;font-weight:700}
+.btn.primary:hover{color:#081a33;filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.mapnav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px}
+.mapnav .btn{flex:1 1 40%;text-align:left}
+.hottext{
+  margin-top:12px;padding:12px 14px;border:1.5px dashed var(--line);border-radius:6px;
+  background:var(--panel2);min-height:3.2em;
+}
+details{margin:14px 0;border:1px solid var(--hairline);border-radius:6px;background:var(--panel2)}
+summary{
+  cursor:pointer;padding:10px 14px;font-weight:600;color:var(--dim);min-height:44px;
+}
+summary:hover{color:var(--accent)}
+details .in{padding:0 14px 12px}
+details p{margin:.5em 0}
+/* 先猜再看 */
+[data-guess]{border:2px solid var(--accent);border-radius:8px;padding:14px 16px;margin:14px 0;background:var(--panel2)}
+[data-guess] .q{font-weight:700;margin:0 0 8px}
+[data-guess] .reveal{margin-top:10px;padding-top:10px;border-top:1px dashed var(--accent)}
+input[type=range]{width:100%;max-width:380px;height:44px;accent-color:var(--accent)}
+output{font-family:"SF Mono",Menlo,Consolas,monospace;color:var(--accent);font-weight:700}
+/* 自测 */
+.quizq{border:1.5px solid var(--line);border-radius:8px;padding:12px 16px;margin:12px 0}
+.quizq .opt{display:block;width:100%;text-align:left;margin:6px 0}
+.quizq .opt.right{border-color:var(--ok);color:var(--ok)}
+.quizq .opt.wrong{border-color:var(--bad);color:var(--bad)}
+.quizq .why{font-size:.92rem;color:var(--dim);margin:.4em 0 0}
+/* 步进演示 */
+.rows{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chip{
+  min-width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--line);border-radius:6px;background:var(--chip);
+  font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.85rem;padding:0 6px;
+}
+.chip.cur{outline:3px solid var(--accent);outline-offset:1px}
+.chip.filtered{background:var(--bad);border-color:var(--bad);color:#fff;text-decoration:line-through}
+.chip.out{background:var(--ok);border-color:var(--ok);color:#062b1a}
+.chip.new{border-style:dashed;border-color:var(--accent);color:var(--accent)}
+.steplog{min-height:2.6em;padding:8px 12px;border:1.5px dashed var(--line);border-radius:6px;background:var(--panel2);font-size:.92rem}
+/* 写放大对比台 */
+.versus{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.vpanel{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel2)}
+.vpanel h3{margin:.1em 0 .4em;font-size:.95rem}
+.vpanel.good{border-color:var(--accent)}
+.meter{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.85rem;color:var(--dim)}
+.meter b{color:var(--bad);font-size:1.15rem}
+.vpanel.good .meter b{color:var(--ok)}
+.bars{height:10px;background:var(--hairline);border-radius:5px;overflow:hidden;margin:4px 0 8px}
+.bars i{display:block;height:100%;background:var(--bad);width:0%}
+.vpanel.good .bars i{background:var(--ok)}
+@media (max-width:640px){.versus{grid-template-columns:1fr}}
+/* 引用弹窗 */
+#citeCard{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;
+  width:min(680px,92vw);background:var(--panel);border:2px solid var(--accent);border-radius:10px;
+  box-shadow:0 12px 40px var(--shadow);padding:16px 18px;
+}
+#citeCard .pg{font-size:.78rem;color:var(--accent);letter-spacing:.1em;font-weight:700}
+#citeCard .q{font-size:.9rem;color:var(--dim);font-style:italic;margin:.5em 0;border-left:3px solid var(--accent);padding-left:10px}
+#citeCard .z{margin:.4em 0 0}
+#citeCard .x{position:absolute;top:6px;right:10px;border:none;background:none;color:var(--dim);font-size:1.3rem;cursor:pointer;min-width:44px;min-height:44px}
+/* 接着读提示 */
+#resumeTip{
+  position:fixed;right:16px;bottom:16px;z-index:50;background:var(--accent);color:#081a33;
+  border:none;border-radius:8px;padding:12px 18px;font-weight:700;cursor:pointer;
+  box-shadow:0 8px 24px var(--shadow);min-height:44px;
+}
+footer{margin-top:40px;padding-top:16px;border-top:2px solid var(--hairline);color:var(--dim);font-size:.85rem}
+footer a{color:var(--line)}
+@media (prefers-color-scheme: dark){footer a{color:var(--line)}}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="t">HERMES · 论文蓝图</span>
+  <button id="backBtn" hidden>↩ 回到刚才的位置</button>
+  <button id="fsDown" aria-label="减小字号">A−</button>
+  <button id="fsUp" aria-label="增大字号">A+</button>
+  <button id="themeBtn" aria-label="切换明暗">◐</button>
+</div>
+<div class="wrap">
+
+<!-- ==================== 首屏：30 秒版 ==================== -->
+<section data-hero id="hero">
+  <div class="sheetbar mono"><span class="no">DWG HERMES-2025</span><span class="ttl">SHEET 00/07 · 总览</span></div>
+  <div class="sheetbody">
+    <div class="kicker">VLDB 2025 · 华为云 · 数据库系统论文</div>
+    <h1>Hermes：给 MySQL 挂一台「分析引擎」</h1>
+    <p class="lede">在 MySQL 旁边挂一个<strong>单机</strong>的列式加速器：分析查询快 2–3 个数量级<sup class="cite" data-cite="speedup"></sup>；数据版本没复制到，就等上几毫秒<sup class="cite" data-cite="wait"></sup>；一台机器跑赢了用 4 台机器的竞品 PolarDB<sup class="cite" data-cite="win19"></sup>。</p>
+    <figure data-figure>
+      <svg viewBox="0 0 760 340" role="img" aria-label="Hermes 总装图：MySQL 通过 binlog 复制到 Hermes 三层存储，查询引擎用 Arrow 格式回传结果">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" class="arw"/>
+          </marker>
+        </defs>
+        <style>.arw{color:#7fb2e5}.bx{fill:none;stroke:var(--line);stroke-width:2}.ax{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4}</style>
+        <!-- MySQL -->
+        <rect x="30" y="60" width="150" height="220" class="bx" rx="4"/>
+        <text x="105" y="90" text-anchor="middle" font-size="17" font-weight="700">MySQL</text>
+        <text x="105" y="112" text-anchor="middle" class="lb" font-size="11">OLTP · 行存</text>
+        <rect x="48" y="130" width="114" height="30" class="bx"/><text x="105" y="150" text-anchor="middle" class="lb" font-size="11">Txn / binlog</text>
+        <rect x="48" y="170" width="114" height="30" class="bx"/><text x="105" y="190" text-anchor="middle" class="lb" font-size="11">Parse · Optimize</text>
+        <rect x="48" y="210" width="114" height="30" class="bx"/><text x="105" y="230" text-anchor="middle" class="lb" font-size="11">Cost &gt; Threshold?</text>
+        <!-- Hermes -->
+        <rect x="270" y="30" width="320" height="290" class="ax" rx="6"/>
+        <text x="430" y="56" text-anchor="middle" font-size="18" font-weight="700" class="ac">Hermes（单机加速器）</text>
+        <!-- 三层存储 -->
+        <rect x="292" y="76" width="130" height="56" class="bx" rx="3"/>
+        <text x="357" y="100" text-anchor="middle" font-size="11">Row-based Delta</text>
+        <text x="357" y="120" text-anchor="middle" class="lb" font-size="10">Write-opt · MVCC</text>
+        <rect x="292" y="148" width="130" height="56" class="bx" rx="3"/>
+        <text x="357" y="172" text-anchor="middle" font-size="11">Columnar Delta</text>
+        <text x="357" y="192" text-anchor="middle" class="lb" font-size="10">Buffer · Anti Write-Amp</text>
+        <rect x="292" y="220" width="130" height="76" class="bx" rx="3"/>
+        <text x="357" y="248" text-anchor="middle" font-size="13">Main Store</text>
+        <text x="357" y="268" text-anchor="middle" class="lb" font-size="10">列式压缩 RowGroup</text>
+        <text x="357" y="286" text-anchor="middle" class="lb" font-size="10">≈16K 行 / ≤1 GiB</text>
+        <!-- 查询引擎 -->
+        <rect x="446" y="120" width="122" height="110" class="bx" rx="3"/>
+        <text x="507" y="150" text-anchor="middle" font-size="13">Query Engine</text>
+        <text x="507" y="172" text-anchor="middle" class="lb" font-size="10">Vectorized + SIMD</text>
+        <text x="507" y="190" text-anchor="middle" class="lb" font-size="10">Morsel-driven</text>
+        <text x="507" y="208" text-anchor="middle" class="lb" font-size="10">Scan=Filter+Append</text>
+        <!-- 对象存储 -->
+        <rect x="630" y="220" width="110" height="60" class="bx" rx="3"/>
+        <text x="685" y="245" text-anchor="middle" font-size="11">Object Storage</text>
+        <text x="685" y="265" text-anchor="middle" class="lb" font-size="10">Checkpoint</text>
+        <!-- 箭头 -->
+        <line x1="180" y1="145" x2="288" y2="104" class="bx" marker-end="url(#ar)"/>
+        <text x="232" y="105" text-anchor="middle" class="lb" font-size="10">binlog Replication</text>
+        <line x1="180" y1="225" x2="442" y2="175" class="ax" marker-end="url(#ar)"/>
+        <text x="290" y="212" text-anchor="middle" class="lb ac" font-size="10">Offload 分析查询</text>
+        <line x1="446" y1="230" x2="180" y2="255" class="ax" marker-end="url(#ar)"/>
+        <text x="310" y="258" text-anchor="middle" class="lb ac" font-size="10">Arrow 结果回传</text>
+        <line x1="422" y1="258" x2="626" y2="252" class="bx" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+        <text x="524" y="243" text-anchor="middle" class="lb" font-size="10">定期 Checkpoint</text>
+        <line x1="357" y1="132" x2="357" y2="144" class="bx" marker-end="url(#ar)"/>
+        <line x1="357" y1="204" x2="357" y2="216" class="bx" marker-end="url(#ar)"/>
+        <line x1="422" y1="104" x2="446" y2="140" class="bx" marker-end="url(#ar)"/>
+        <line x1="422" y1="176" x2="446" y2="176" class="bx" marker-end="url(#ar)"/>
+        <line x1="422" y1="258" x2="468" y2="234" class="bx" marker-end="url(#ar)"/>
+        <!-- 尺寸线装饰 -->
+        <text x="30" y="322" class="lb" font-size="10">SCALE 1:1 · Single-Node · In-Memory · Data Freshness：等待≈毫秒级</text>
+      </svg>
+      <figcaption>总装图：查询代价超过阈值就从 MySQL offload（卸载）给 Hermes；改动经 binlog 持续流入三层存储；Main store 定期做 checkpoint（检查点）到 Object Storage。</figcaption>
+    </figure>
+    <div class="mapnav">
+      <button class="btn" data-jump="s1"><b>问题</b> · 为什么敢只用一台机器</button>
+      <button class="btn" data-jump="s2"><b>方法</b> · 三条 Pipeline + 三层存储</button>
+      <button class="btn" data-jump="s6"><b>证据</b> · TPC-H 实测数字</button>
+      <button class="btn" data-jump="s7"><b>结论</b> · 代价与适用边界</button>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 场景 1：问题 ==================== -->
+<section data-scene="1" id="s1">
+  <div class="sheetbar mono"><span class="no">SHEET 01/07</span><span class="ttl">问题 · 为什么敢只用一台机器</span></div>
+  <div class="sheetbody">
+    <p class="pt">云上的分析系统大多按「多节点、超大数据」设计。但论文的主张是：<strong>多数客户的数据没那么大</strong>，多节点反而要反复跨网络搬数据，又贵又慢。现代单机就能装下 TB 级数据。</p>
+    <div data-guess>
+      <p class="q">先猜再看：PublicBI 是一个真实 BI 数据集。你猜里面大多数表有多少行？</p>
+      <button class="btn" data-opt="a">超过 1 亿行</button>
+      <button class="btn" data-opt="b">100 万 – 1 亿行</button>
+      <button class="btn" data-opt="c">不超过 100 万行</button>
+      <p class="reveal" hidden>答案：大多数表 <strong>≤100 万行</strong>，只有少数表超过 1 亿行<sup class="cite" data-cite="publicbi"></sup>。Snowflake 公开的真实负载 Snowset 里，大多数查询读的数据不到 1 TB<sup class="cite" data-cite="snowset"></sup>。</p>
+    </div>
+    <details>
+      <summary>多节点到底亏在哪？（论文 §2.2 的账）</summary>
+      <div class="in">
+        <p>分析查询常有多个 join 和 group by。每换一次分组键，就要按新键把数据重新分区（re-partitioning），大表可能在网络里被搬运好几次。</p>
+        <p>数据倾斜（skew）时更糟：极端情况下 128 核的集群可能只有 1 核在干活。单机可以用 Morsel-driven parallelism 做负载均衡（load-balance）<sup class="cite" data-cite="morsel"></sup>，跨机均衡则又要搬数据。</p>
+        <p>论文的原话：反复 re-partitioning 让系统「既不省成本、也不省电力」。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 2：方法 · 三条 Pipeline ==================== -->
+<section data-scene="2" id="s2">
+  <div class="sheetbar mono"><span class="no">SHEET 02/07</span><span class="ttl">方法 · 三条 Pipeline</span></div>
+  <div class="sheetbody">
+    <p class="pt">Hermes 只做三件事：<strong>接查询、追改动、做备份</strong>。点下面图里的三条 pipeline，看各自怎么走。</p>
+    <svg viewBox="0 0 760 210" role="img" aria-label="三条 pipeline 示意图">
+      <style>.ln{fill:none;stroke:var(--line);stroke-width:2}.hot{cursor:pointer}.hot rect{fill:var(--chip);stroke:var(--line);stroke-width:2}.hot.on rect{stroke:var(--accent);stroke-width:3}.hot text{pointer-events:none}</style>
+      <g class="hot" data-pipe="q" tabindex="0" role="button" aria-label="Query Pipeline">
+        <rect x="20" y="20" width="220" height="60" rx="6"/>
+        <text x="130" y="46" text-anchor="middle" font-size="14" font-weight="700">① Query Pipeline</text>
+        <text x="130" y="68" text-anchor="middle" class="lb" font-size="11">SQL → Cost 判断 → Offload</text>
+      </g>
+      <g class="hot" data-pipe="r" tabindex="0" role="button" aria-label="Replication Pipeline">
+        <rect x="270" y="20" width="220" height="60" rx="6"/>
+        <text x="380" y="46" text-anchor="middle" font-size="14" font-weight="700">② Replication Pipeline</text>
+        <text x="380" y="68" text-anchor="middle" class="lb" font-size="11">binlog → 解析 → Delta</text>
+      </g>
+      <g class="hot" data-pipe="c" tabindex="0" role="button" aria-label="Checkpoint Pipeline">
+        <rect x="520" y="20" width="220" height="60" rx="6"/>
+        <text x="630" y="46" text-anchor="middle" font-size="14" font-weight="700">③ Checkpoint Pipeline</text>
+        <text x="630" y="68" text-anchor="middle" class="lb" font-size="11">RowGroup → Object Storage</text>
+      </g>
+      <line x1="130" y1="82" x2="130" y2="150" class="ln"/>
+      <line x1="380" y1="82" x2="380" y2="150" class="ln"/>
+      <line x1="630" y1="82" x2="630" y2="150" class="ln"/>
+      <line x1="130" y1="150" x2="630" y2="150" class="ln"/>
+      <text x="380" y="140" text-anchor="middle" class="lb" font-size="11">三条 pipeline 互不阻塞：查询只读、replication 只写 Delta、checkpoint 只碰 Main store</text>
+      <text x="380" y="190" text-anchor="middle" class="lb ac" font-size="11">▼ 点任意一条，下方出现说明</text>
+    </svg>
+    <div class="hottext" id="pipeText">点上面任意一条 pipeline。</div>
+    <details>
+      <summary>细节：首批数据、结果回传、故障恢复</summary>
+      <div class="in">
+        <p>首批全量数据走 Ingestion：分块并行加载，跳过 Delta 直接进 Main store。之后 binlog 的改动走 Change Propagation 进 Delta。</p>
+        <p>结果用 Apache Arrow 格式回传给 MySQL，MySQL 再转给用户<sup class="cite" data-cite="arrow"></sup>。</p>
+        <p>Main store 是压缩的，checkpoint 的量小；它只读，不和写入抢锁<sup class="cite" data-cite="checkpoint"></sup>。Hermes 宕机时 MySQL 照常工作；也可以挂多个 Hermes 实例分担查询或做故障转移。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 3：存储 · 三层结构 ==================== -->
+<section data-scene="3" id="s3">
+  <div class="sheetbar mono"><span class="no">SHEET 03/07</span><span class="ttl">方法 · 三层存储</span></div>
+  <div class="sheetbody">
+    <p class="pt">写入快和分析快互相矛盾。Hermes 的答案是把数据分三层：<strong>Row-based Delta（行式 Delta）接写入 → Columnar Delta（列式 Delta）做缓冲 → 压缩列式的 Main store（主存储）给分析</strong>，改动逐层下沉。</p>
+    <figure data-figure>
+      <svg viewBox="0 0 760 300" role="img" aria-label="三层存储剖视图">
+        <style>.bx{fill:none;stroke:var(--line);stroke-width:2}.flow{fill:none;stroke:var(--accent);stroke-width:2.5;marker-end:url(#ar2)}</style>
+        <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs>
+        <!-- 层 1 -->
+        <rect x="30" y="30" width="200" height="240" class="bx" rx="4"/>
+        <text x="130" y="56" text-anchor="middle" font-size="12" font-weight="700">Row-based Delta</text>
+        <text x="130" y="74" text-anchor="middle" class="lb" font-size="10">Write-Optimized</text>
+        <rect x="48" y="88" width="164" height="26" class="bx"/><text x="130" y="106" text-anchor="middle" class="lb" font-size="10">RowIdMap 哈希表</text>
+        <rect x="48" y="120" width="164" height="26" class="bx"/><text x="130" y="138" text-anchor="middle" class="lb" font-size="10">RowSpace 最新行</text>
+        <rect x="48" y="152" width="164" height="26" class="bx"/><text x="130" y="170" text-anchor="middle" class="lb" font-size="10">UndoSpace 旧版本</text>
+        <rect x="48" y="184" width="164" height="26" class="bx"/><text x="130" y="202" text-anchor="middle" class="lb" font-size="10">DeleteLog 删除记录</text>
+        <text x="130" y="240" text-anchor="middle" class="lb" font-size="10">Insert 追加 · Update 原地改</text>
+        <text x="130" y="258" text-anchor="middle" class="lb" font-size="10">Delete 只记时间戳</text>
+        <!-- 层 2 -->
+        <rect x="280" y="30" width="200" height="240" class="bx" rx="4"/>
+        <text x="380" y="56" text-anchor="middle" font-size="12" font-weight="700">Columnar Delta</text>
+        <text x="380" y="74" text-anchor="middle" class="lb" font-size="10">中间缓冲 · 按 Row-ID 排序</text>
+        <rect x="298" y="92" width="164" height="120" class="bx"/>
+        <line x1="298" y1="122" x2="462" y2="122" class="bx"/>
+        <line x1="298" y1="152" x2="462" y2="152" class="bx"/>
+        <line x1="298" y1="182" x2="462" y2="182" class="bx"/>
+        <text x="380" y="110" text-anchor="middle" class="lb" font-size="10">最近已提交的改动</text>
+        <text x="380" y="140" text-anchor="middle" class="lb" font-size="10">攒一批再 Merge</text>
+        <text x="380" y="170" text-anchor="middle" class="lb" font-size="10">避免零散改动</text>
+        <text x="380" y="200" text-anchor="middle" class="lb" font-size="10">触发整页重写</text>
+        <text x="380" y="240" text-anchor="middle" class="lb ac" font-size="10">关键作用：吸收「均匀更新」</text>
+        <text x="380" y="258" text-anchor="middle" class="lb ac" font-size="10">防 Write-Amp</text>
+        <!-- 层 3 -->
+        <rect x="530" y="30" width="200" height="240" class="bx" rx="4"/>
+        <text x="630" y="56" text-anchor="middle" font-size="14" font-weight="700">Main Store</text>
+        <text x="630" y="74" text-anchor="middle" class="lb" font-size="10">Read-Optimized · 列式压缩</text>
+        <rect x="548" y="92" width="164" height="46" class="bx"/><text x="630" y="112" text-anchor="middle" class="lb" font-size="10">RowGroup ≈16K 行</text><text x="630" y="130" text-anchor="middle" class="lb" font-size="10">≤ 1 GiB · 带 Version 时间戳</text>
+        <rect x="548" y="144" width="164" height="46" class="bx"/><text x="630" y="164" text-anchor="middle" class="lb" font-size="10">PaxGroup · 列式布局</text><text x="630" y="182" text-anchor="middle" class="lb" font-size="10">字典 / FOR 压缩 · SIMD</text>
+        <rect x="548" y="196" width="164" height="46" class="bx"/><text x="630" y="216" text-anchor="middle" class="lb" font-size="10">每列 min/max 统计</text><text x="630" y="234" text-anchor="middle" class="lb" font-size="10">Scan 先跳过不合格块</text>
+        <!-- 流动箭头 -->
+        <path d="M 230 120 L 276 120" class="flow"/>
+        <text x="253" y="108" text-anchor="middle" class="lb ac" font-size="9">Propagate</text>
+        <path d="M 480 120 L 526 120" class="flow"/>
+        <text x="503" y="108" text-anchor="middle" class="lb ac" font-size="9">Merge</text>
+        <text x="380" y="292" text-anchor="middle" class="lb" font-size="10">改动方向：写入 → 缓冲 → 沉淀；每层独立做 GC（Garbage Collection）</text>
+      </svg>
+      <figcaption>剖视图：三个存储层各自的内部结构。Merge 只新建被改动的 RowGroup，没变的只复制指针。</figcaption>
+    </figure>
+    <p style="margin:.4em 0">动手试试为什么需要中间的 Columnar Delta。连点 5 次「发生一次均匀更新」，对比两种设计的写入量<span class="tag" data-label="示意">示意</span>：</p>
+    <div class="versus">
+      <div class="vpanel">
+        <h3>没有中间层</h3>
+        <div class="dim" style="font-size:.85rem">每次更新都直接 Merge 进 Main store</div>
+        <div class="meter">RowGroup 重写 <b id="waMerge">0</b> 次 · 写入 <b id="waBytes">0</b> GiB</div>
+        <div class="bars"><i id="waBar"></i></div>
+      </div>
+      <div class="vpanel good">
+        <h3>有 Columnar Delta（Hermes）<span class="tag" data-label="示意">示意</span></h3>
+        <div class="dim" style="font-size:.85rem">改动先攒着，手动点「Merge」才下沉</div>
+        <div class="meter">缓冲中 <b id="bufN">0</b> 批 · RowGroup 重写 <b id="cdMerge">0</b> 次 · 写入 <b id="cdBytes">0</b> GiB</div>
+        <div class="bars"><i id="cdBar"></i></div>
+        <button class="btn" id="doMerge">Merge 进 Main store</button>
+      </div>
+    </div>
+    <button class="btn primary" id="doUpdate">发生一次均匀更新</button>
+    <button class="btn" id="resetSim">重置</button>
+    <details>
+      <summary>细节：每层为什么长这样</summary>
+      <div class="in">
+        <p>RowGroup 约 16K 行，物理上限 1 GiB<sup class="cite" data-cite="rowgroup"></sup>。最坏情况下，均匀散布的几行改动会命中几乎所有 RowGroup，一次重写就是把 1 GiB 解压成 2–3 GiB 再压回去，这就是写放大（write amplification）<sup class="cite" data-cite="writeamp"></sup>。Columnar Delta 把改动攒久一点，摊薄这笔开销。</p>
+        <p>Row-based Delta 的更新沿用 Hyper 的 MVCC 版本链：旧版本进 UndoSpace，新事务看不到未提交的改动<sup class="cite" data-cite="mvcc"></sup>。</p>
+        <p>设计假设：表里同时存在的改动不到 10%<sup class="cite" data-cite="delta10"></sup>。靠积极地把改动往下层推来维持这个假设。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 4：扫描合并 ==================== -->
+<section data-scene="4" id="s4">
+  <div class="sheetbar mono"><span class="no">SHEET 04/07</span><span class="ttl">方法 · Scan = Filter + Append</span></div>
+  <div class="sheetbody">
+    <p class="pt">Scan（扫描）要同时读 Main store 和 Delta。Hermes 不逐行查哈希，而是：<strong>先收集 Delta 里改过的行号排好序，扫 Main store 时用 merge 跳过它们（M−D），最后把 Delta 追加到结果末尾</strong>。点「下一步」走一遍：</p>
+    <div class="dim mono" style="font-size:.8rem">Main store（按行号有序，行 3、7、8 在 Delta 里有改动）</div>
+    <div class="rows" id="mainRows"></div>
+    <div class="dim mono" style="font-size:.8rem">Delta（改动的行 3·7·8 + 新插入的行 13·14）</div>
+    <div class="rows" id="deltaRows"></div>
+    <div class="dim mono" style="font-size:.8rem">输出</div>
+    <div class="rows" id="outRows"></div>
+    <div class="steplog" id="stepLog">准备：把 Delta 里的行号 {3, 7, 8} 收集成一个有序集合。</div>
+    <div style="margin-top:8px">
+      <button class="btn primary" id="stepNext">下一步</button>
+      <button class="btn" id="stepAuto">自动播放</button>
+      <button class="btn" id="stepReset">重置</button>
+    </div>
+    <details>
+      <summary>这个 merge 有多便宜？和别人比呢？</summary>
+      <div class="in">
+        <p>两边都按行号有序，merge 时大多在 Main store 上顺序跳过，平摊下来每行不到 1 个 CPU 周期<sup class="cite" data-cite="merge1cycle"></sup>。</p>
+        <p>对比：Vectorwise 要遍历 Positional Delta Tree（PDT）；ByteHTAP 方案一是对 Main store 每一行做一次主键哈希查找。Hermes 只有整数 merge，没有哈希、没有随机内存访问。</p>
+        <p>实测：更新比例低于 0.01% 时过滤每行 ≤1 周期；到 1% 时也只涨到 2.5 周期。真正变贵的是 scan Delta 本身<sup class="cite" data-cite="filtercost"></sup>。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 5：与 MySQL 对齐 ==================== -->
+<section data-scene="5" id="s5">
+  <div class="sheetbar mono"><span class="no">SHEET 05/07</span><span class="ttl">集成 · 和 MySQL 完全对齐</span></div>
+  <div class="sheetbody">
+    <p class="pt">两件难事：<strong>看到的数据必须和 MySQL 是同一个 snapshot（快照）</strong>（用 GTID→HTID 映射对齐，没复制到就等<sup class="cite" data-cite="gtid"></sup>）；<strong>算出来的结果必须和 MySQL 一模一样</strong>，包括它的怪脾气。</p>
+    <div data-guess>
+      <p class="q">先猜再看：在 MySQL 里执行 <span class="mono">select 3 + 'abc'</span>，结果是什么？</p>
+      <button class="btn" data-opt="a">报错</button>
+      <button class="btn" data-opt="b">0</button>
+      <button class="btn" data-opt="c">3</button>
+      <p class="reveal" hidden>答案：<strong>3</strong>。MySQL 会把字符串 'abc' 悄悄转成 0<sup class="cite" data-cite="quirk"></sup>。Hermes 让 MySQL 在查询计划里插入「可选类型转换」，把这些隐式规则显式化，保证两边结果一致。</p>
+    </div>
+    <details>
+      <summary>更多对齐手段</summary>
+      <div class="in">
+        <p>另一个例子：<span class="mono">substr(123, 1, 1)</span> 返回 '1'，因为整数 123 被转成字符串 '123'<sup class="cite" data-cite="quirk2"></sup>。</p>
+        <p>Replication 端：严格按 commit 顺序复制太慢，Hermes 改为显式跟踪事务依赖，互不依赖的事务可以乱序提交，吞吐更高<sup class="cite" data-cite="ooo"></sup>。</p>
+        <p>查询要的版本还没复制到？那就等。实测等待是毫秒级，而分析查询本身通常要跑几百毫秒以上，所以几乎无感<sup class="cite" data-cite="wait"></sup>。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 6：证据 ==================== -->
+<section data-scene="6" id="s6">
+  <div class="sheetbar mono"><span class="no">SHEET 06/07</span><span class="ttl">证据 · TPC-H 实测</span></div>
+  <div class="sheetbody">
+    <p class="pt">TPC-H SF100（约 100 GiB 未压缩数据<sup class="cite" data-cite="sf100size"></sup>）22 条分析查询总耗时：Hermes <strong>15.6 秒</strong>，MySQL 8539 秒，4 节点的 PolarDB 29.81 秒<sup class="cite" data-cite="sf100total"></sup>。22 条里 Hermes 赢 PolarDB 19 条<sup class="cite" data-cite="win19"></sup>。</p>
+    <div data-guess>
+      <p class="q">先猜再看：数据放大 10 倍到 SF1000（约 1 TB），你猜 Hermes 的总耗时变成 SF100 的多少倍？</p>
+      <input type="range" id="g6range" min="1" max="40" value="20" step="1" aria-label="猜倍数">
+      <output id="g6out">20 倍</output>
+      <button class="btn primary" id="g6btn">揭晓</button>
+      <p class="reveal" hidden>答案：约 <strong>13 倍</strong>（15.6 秒 → 208.4 秒<span class="tag" data-label="推算">推算</span>）<sup class="cite" data-cite="sf1000total"></sup>。数据涨 10 倍，耗时只涨 13 倍，而且仍比 4 节点 PolarDB 的总耗时快约 1.9 倍<sup class="cite" data-cite="sf1000total"></sup>。</p>
+    </div>
+    <div style="margin:10px 0">
+      <button class="btn primary" id="tabSF100">SF100</button>
+      <button class="btn" id="tabSF1000">SF1000</button>
+      <span class="dim mono" style="font-size:.78rem"> 总耗时（秒，对数刻度）</span>
+    </div>
+    <svg class="chartsvg" viewBox="0 0 760 260" role="img" aria-label="TPC-H 总耗时对比条形图">
+      <g id="chart100">
+        <text x="150" y="40" text-anchor="end" font-size="13">Hermes（单机）</text>
+        <rect x="160" y="24" width="164" height="24" fill="var(--accent)"/><text x="332" y="41" class="lb" font-size="12">15.6s</text>
+        <text x="150" y="90" text-anchor="end" font-size="13">PolarDB（4 节点）</text>
+        <rect x="160" y="74" width="222" height="24" fill="var(--line)"/><text x="390" y="91" class="lb" font-size="12">29.81s</text>
+        <text x="150" y="140" text-anchor="end" font-size="13">PolarDB 折算单机</text>
+        <rect x="160" y="124" width="252" height="24" fill="var(--dim)"/><text x="420" y="141" class="lb" font-size="12">38.51s（推算）</text>
+        <text x="150" y="190" text-anchor="end" font-size="13">MySQL</text>
+        <rect x="160" y="174" width="600" height="24" fill="var(--bad)"/><text x="560" y="164" class="lb" font-size="12">8539s ≈ 2.4 小时</text>
+        <text x="160" y="236" class="lb" font-size="10">刻度：log10(秒) · 数据来源 Table 1 (p.5122)</text>
+      </g>
+      <g id="chart1000" hidden>
+        <text x="150" y="40" text-anchor="end" font-size="13">Hermes（单机）</text>
+        <rect x="160" y="24" width="320" height="24" fill="var(--accent)"/><text x="488" y="41" class="lb" font-size="12">208.4s</text>
+        <text x="150" y="90" text-anchor="end" font-size="13">PolarDB（4 节点）</text>
+        <rect x="160" y="74" width="370" height="24" fill="var(--line)"/><text x="538" y="91" class="lb" font-size="12">405.0s</text>
+        <text x="150" y="140" text-anchor="end" font-size="13">PolarDB 折算单机</text>
+        <rect x="160" y="124" width="470" height="24" fill="var(--dim)"/><text x="638" y="141" class="lb" font-size="12">1150.0s（推算）</text>
+        <text x="150" y="190" text-anchor="end" font-size="13">MySQL</text>
+        <text x="160" y="190" class="lb" font-size="12">论文未测</text>
+        <text x="160" y="236" class="lb" font-size="10">刻度：log10(秒) · 数据来源 Table 2 (p.5122) · 压缩后约 350 GiB，仍装得进内存</text>
+      </g>
+    </svg>
+    <details>
+      <summary>这些数字该怎么读（重要）</summary>
+      <div class="in">
+        <p><strong>例外 Q6</strong>：一条纯 scan、纯聚合的查询，PolarDB 更快。原因很物理：4 台机器的内存带宽总和约是单机的 4 倍<sup class="cite" data-cite="q6"></sup>。查询一复杂（join、group by），多节点要跨网络 re-partitioning，优势就转到 Hermes。</p>
+        <p><strong>数据来源</strong>：PolarDB 的数字来自阿里云官网公布值，不是作者实测，配置是 4 台 32 逻辑核的机器<sup class="cite" data-cite="polardbSrc"></sup>。「PolarDB 折算单机」是作者假设线性扩展、按核数除以 2 得到的推算值<span class="tag" data-label="推算">推算</span><sup class="cite" data-cite="imci1node"></sup>。</p>
+        <p><strong>测试机</strong>：双路 Intel Xeon 8378A（共 128 线程），512 GB 内存<sup class="cite" data-cite="hw"></sup>。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 场景 7：代价与边界 ==================== -->
+<section data-scene="7" id="s7">
+  <div class="sheetbar mono"><span class="no">SHEET 07/07</span><span class="ttl">结论 · 代价与适用边界</span></div>
+  <div class="sheetbody">
+    <p class="pt">天下没有免费的加速器：表里改动越多，scan 越慢。改动 ≤0.2% 时几乎无感，到 1% 时 scan 慢一倍<sup class="cite" data-cite="scandeg"></sup>。Hermes 的对策是勤快 merge，把改动压在 1% 以内。Replication 吞吐峰值约每秒 6 万次改动<sup class="cite" data-cite="repl60k"></sup>。</p>
+    <p style="margin:.4em 0">拖动滑块，看「表被改动的比例」怎么影响 scan（无更新基线：每行 11.5 个周期<sup class="cite" data-cite="baseline"></sup>）：</p>
+    <input type="range" id="updRange" min="0" max="3" value="0" step="0.05" aria-label="表被改动的百分比">
+    <div class="meter" style="font-size:1rem">改动 <output id="updPct">0%</output> · Scan 耗时约 ×<output id="updF">1.0</output> · 每行约 <output id="updC">11.5</output> 周期 <span class="tag" data-label="示意">示意</span></div>
+    <div class="steplog" id="updVerdict" style="margin-top:8px">没有改动：纯 Main store scan，最爽的状态。</div>
+    <details>
+      <summary>其他代价与这篇论文没回答的问题</summary>
+      <div class="in">
+        <p>压缩率约 3 倍：TPC-H 从 115.5 GiB 压到 35.5 GiB，解压几乎免费<sup class="cite" data-cite="compress"></sup>。这让 TB 级数据能单机驻留内存。</p>
+        <p>复制吞吐在 8 核后不再涨，受测试机只有 8 个性能核限制；大事务吞吐更低（约 3 倍差距）<sup class="cite" data-cite="replscale"></sup>。</p>
+        <p><span class="tag" data-label="解读">解读</span>论文没展开的部分：数据大于内存时 offload 到 Object Storage 的方案只提了一句，没有评测；对 PolarDB 的对比依赖对方官网数字；单行插入的吞吐受锁竞争限制，作者说会改成无锁操作。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ==================== 结尾自测 ==================== -->
+<section data-quiz-sec id="quiz">
+  <div class="sheetbar mono"><span class="no">APPENDIX A</span><span class="ttl">你答得上来吗</span></div>
+  <div class="sheetbody" data-quiz>
+    <div class="quizq">
+      <p><b>1.</b> Scan 时，Hermes 怎么把 Main store 和 Delta 拼在一起？</p>
+      <button class="btn opt" data-ok="0">对 Main store 每一行做一次主键哈希查找</button>
+      <button class="btn opt" data-ok="1">按行号 merge：过滤被改的行，再把 Delta 追加到末尾</button>
+      <button class="btn opt" data-ok="0">把 Main store 整页重写一遍再扫</button>
+      <p class="why" hidden>Merge 过滤平摊每行不到 1 个 CPU 周期，没有哈希、没有随机访问<sup class="cite" data-cite="merge1cycle"></sup>。</p>
+    </div>
+    <div class="quizq">
+      <p><b>2.</b> TPC-H Q6 上 4 节点 PolarDB 为什么能赢 Hermes？</p>
+      <button class="btn opt" data-ok="0">PolarDB 的压缩算法更好</button>
+      <button class="btn opt" data-ok="1">Q6 是纯扫描查询，4 台机器的内存带宽总和约是单机 4 倍</button>
+      <button class="btn opt" data-ok="0">Hermes 不支持聚合</button>
+      <p class="why" hidden>这是带宽题，不是算法题；查询变复杂、需要跨网络重分区时，优势转到单机<sup class="cite" data-cite="q6"></sup>。</p>
+    </div>
+    <div class="quizq">
+      <p><b>3.</b> 查询要的数据版本还没复制到 Hermes，会发生什么？</p>
+      <button class="btn opt" data-ok="0">返回旧版本数据</button>
+      <button class="btn opt" data-ok="0">直接报错</button>
+      <button class="btn opt" data-ok="1">等待复制完成，实测通常只要几毫秒</button>
+      <p class="why" hidden>等待几毫秒 vs 查询本身几百毫秒，几乎无感；数据新鲜度因此是最高的<sup class="cite" data-cite="wait"></sup>。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>论文：Tim Gubner, Rune Humborstad, Manyi Lu. <i>Freely Moving Between the OLTP and OLAP Worlds: Hermes – an High-Performance OLAP Accelerator for MySQL</i>. PVLDB 18(12): 5113–5125, 2025. <a href="https://www.vldb.org/pvldb/vol18/p5113-gubner.pdf">原文 PDF</a>（CC BY-NC-ND 4.0）。</p>
+  <p>本页是讲解材料，所有数字都能点开角标核对原句和页码；标了「推算」「示意」「解读」「读图」的内容不是原文原话。关键数字请以原文为准。</p>
+</footer>
+</div>
+
+<!-- 引用弹窗 -->
+<div id="citeCard" hidden role="dialog" aria-modal="true" aria-label="原文出处">
+  <button class="x" id="citeClose" aria-label="关闭">×</button>
+  <div class="pg mono" id="citePage"></div>
+  <div class="q" id="citeQuote"></div>
+  <p class="z" id="citeZh"></p>
+</div>
+<button id="resumeTip" hidden>▶ 接着上次的进度读</button>
+
+<script>
+/* ==================== 事实账本：id → 页码 → 原文原句 → 中文转述 ==================== */
+const SOURCES = {
+  speedup:   { page: 5121, quote: "Compared to MySQL, we see speedups are 2-3 orders of magnitude, reaching up to 1,800×. The worst speedup seen is a \"meager\" 17×.", zh: "比 MySQL 快 2–3 个数量级：最多 1800 倍，最差也有 17 倍" },
+  wait:      { page: 5121, quote: "Practically, this waiting time is in the low milliseconds and negligible compared to the runtime of the query, which is often hundreds of milliseconds or more.", zh: "等复制的时间实测只有几毫秒，查询本身要几百毫秒" },
+  win19:     { page: 5121, quote: "Hermes outperforms PolarDB in 19 out of 22 queries and in 7 queries by more than 2×. Hermes underperforms in 3 queries.", zh: "22 条查询赢 PolarDB 19 条，其中 7 条快 2 倍以上，输 3 条" },
+  publicbi:  { page: 5114, quote: "In PublicBI most tables contain ≤1M rows, only one tables few contain more than 100M rows.", zh: "PublicBI 里大多数表不超过 100 万行" },
+  snowset:   { page: 5115, quote: "Similarly, in Snowset, a realistic dataset released by Snowflake, most queries read less than 1 TB.", zh: "Snowset 里大多数查询读不到 1 TB" },
+  morsel:    { page: 5121, quote: "Data is logically split into Morsels (data chunks, larger than vectors, typically 10-32k rows). Each thread dynamically consumes Morsels.", zh: "Morsel 并行：线程动态领取 1–3.2 万行的工作块，自带负载均衡" },
+  arrow:     { page: 5120, quote: "...evaluated by Hermes, which, then, returns the result serialized in the Apache Arrow format.", zh: "结果用 Apache Arrow 格式回传给 MySQL" },
+  checkpoint:{ page: 5116, quote: "...we decided to periodically checkpoint the Main store and write the changes to Object Storage.", zh: "定期把 Main store checkpoint 到 Object Storage；压缩后备份量小，且只读不抢写锁" },
+  rowgroup:  { page: 5117, quote: "Physically, this limits the size of a PaxGroup to 1GiB. Only if it is impossible to fit 16K rows into an Allocation Unit, we consider splitting into multiple PaxGroups.", zh: "一个分配单元约装 16K 行，物理上限 1 GiB" },
+  writeamp:  { page: 5118, quote: "...often turns 1GiB compressed (one Allocation Unit) into 2-3GiB uncompressed data. But even more importantly leads to write amplification, as a few rows of changes will lead to writing 1GiB of data.", zh: "最坏情况：几行改动就要重写约 1 GiB，解压后 2–3 GiB" },
+  mvcc:      { page: 5118, quote: "For Updates, we utilize the ideas from Hyper's MVCC implementation. We maintain a Version Vector that allows us to re-construct older versions.", zh: "更新沿用 Hyper 的 MVCC：旧版本进 UndoSpace，用版本链重建" },
+  delta10:   { page: 5115, quote: "...we assume that <10% of the table has changes and, thus, rather eagerly flush data to the intermediate Deltas.", zh: "设计假设：表里的改动不到 10%，靠积极下沉来维持" },
+  merge1cycle:{ page: 5118, quote: "...this algorithm is efficient and runs in amortized <1 cycle per row, because it will mostly skip through.", zh: "Merge 过滤平摊每行不到 1 个 CPU 周期" },
+  filtercost:{ page: 5123, quote: "Below 0.01% updates, filtering the data from the Main store with the Delta costs ≤1 cycle per row. At around 1%, filtering costs only 2.5 cycles per row.", zh: "过滤本身很便宜；真正变贵的是扫描 Delta" },
+  quirk:     { page: 5121, quote: "select 3+'abc' will return 3, as MySQL turns 'abc' into 0.", zh: "MySQL 把 'abc' 当 0，所以 3+'abc' 得 3" },
+  quirk2:    { page: 5121, quote: "select substr(123, 1, 1) will return 1, because MySQL turns the integer 123 into the string '123'.", zh: "整数 123 被转成字符串 '123'，取首字符得 '1'" },
+  gtid:      { page: 5120, quote: "To achieve view consistent with MySQl, we maintain a mapping from GTIDs to HTIDs.", zh: "用 GTID→HTID 映射，让 Hermes 看到和 MySQL 一致的快照" },
+  ooo:       { page: 5120, quote: "To break the strict commit-order, we explicitly track the dependencies of transactions... requires Hermes to commit transactions out-of-order.", zh: "显式跟踪事务依赖，允许乱序提交，复制吞吐更高" },
+  sf100size: { page: 5121, quote: "...TPC-H scale factor (SF) 100, which is roughly 100 GiB of uncompressed data.", zh: "SF100 ≈ 100 GiB 未压缩数据" },
+  sf100total:{ page: 5122, quote: "Total  15.6  8539  29.81  38.51  (Table 1: Runtimes on TPC-H SF100, secs; columns: Hermes / MySQL / PolarDB-IMCI / IMCI 1 Node)", zh: "SF100 总耗时：Hermes 15.6s、MySQL 8539s、4 节点 PolarDB 29.81s" },
+  sf1000total:{ page: 5122, quote: "Total  208.4  405.0  1150.0  (Table 2: Runtimes on TPC-H SF1000, secs; columns: Hermes / PolarDB-IMCI / IMCI 1 Node)", zh: "SF1000 总耗时：Hermes 208.4s、4 节点 PolarDB 405.0s（快约 1.9 倍）" },
+  q6:        { page: 5121, quote: "Since PolarDB uses 4 nodes, it can get a higher memory bandwidth (4× single-node bandwidth).", zh: "Q6 是纯 scan 查询；4 节点内存带宽约为单机 4 倍" },
+  polardbSrc:{ page: 5121, quote: "Here, we compare against PolarDB-IMCI using their reported runtimes [2]. We used the best numbers shown for PolarDB which is in that case using four machines/nodes with 32/16 logical/real cores each.", zh: "PolarDB 数字取自其官网，配置为 4 台 32 逻辑核的机器" },
+  imci1node: { page: 5121, quote: "...adjusted to runtimes to the number of cores, assuming linear scalability (shown as IMCI 1 Node; we assumed dividing the runtimes by 2 would compensate for half the CPU cores).", zh: "「单机 PolarDB」是假设线性扩展、按核数折算出来的推算值" },
+  hw:        { page: 5121, quote: "...a two-socket with Intel Xeon Platinum 8378A with 512GB DRAM and 32 cores (64 logical cores) each.", zh: "测试机：双路 Xeon 8378A（共 128 线程）、512 GB 内存" },
+  scandeg:   { page: 5123, quote: "Until 0.2% of the table updated, we can see almost no degration(≤20%). At around 0.5%, we see a 50% degradation. At 1%, we see a 100% degradation (i.e. scans roughly twice as expensive). Until, at around 3%, the scan is roughly 4× slower.", zh: "改动 0.2% 几乎无感；0.5% 慢 50%；1% 慢一倍；3% 慢约 4 倍" },
+  repl60k:   { page: 5123, quote: "Overall, Hermes can sustain up to 60k single transactions inserts/updates per second on a (small) single-node, and potentially higher rates on a larger machine.", zh: "复制峰值约每秒 6 万次单行插入/更新（小机型上测得）" },
+  baseline:  { page: 5123, quote: "Without updates (i.e. without a Delta), the scan runs in 11.5 cycles/row, i.e. 1.2 cycles/attribute.", zh: "无更新时扫描基线：每行 11.5 个周期" },
+  compress:  { page: 5124, quote: "TPC-H  115.5  35.5  3.2 / TPC-DS  79.1  31.3  2.5 (Table 3: Compression ratio on SF100)", zh: "压缩率：TPC-H 3.2 倍、TPC-DS 2.5 倍，解压几乎免费" },
+  replscale: { page: 5123, quote: "All three experiments, show similar scaling behavior, i.e. they scale until 8 cores are reached and flatten out afterwards. This is likely a consequence of the hardware we chose, which only provides 8 high-performance cores. ... the throughput for the larger compound transaction (Compound Txn) is roughly 3× lower.", zh: "吞吐到 8 核后持平（测试机只有 8 个性能核）；复合事务吞吐约低 3 倍" }
+};
+
+/* ==================== 工具 ==================== */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const motionOK = () => !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k, v); } catch {} }
+};
+
+/* ==================== 出处角标弹窗 ==================== */
+const citeCard = $("#citeCard");
+let lastCite = null;
+document.addEventListener("click", e => {
+  const c = e.target.closest("sup.cite");
+  if (!c) return;
+  const s = SOURCES[c.dataset.cite];
+  if (!s) return;
+  lastCite = c;
+  $("#citePage").textContent = "原文 p." + s.page + " · 论文原句";
+  $("#citeQuote").textContent = "“" + s.quote + "”";
+  $("#citeZh").textContent = "转述：" + s.zh;
+  citeCard.hidden = false;
+});
+function closeCite(){ citeCard.hidden = true; if (lastCite) lastCite.focus?.(); }
+$("#citeClose").addEventListener("click", closeCite);
+
+/* ==================== 跳转与「回到原处」 ==================== */
+const backStack = [];
+const backBtn = $("#backBtn");
+function jumpTo(id){
+  backStack.push(window.scrollY);
+  history.pushState({ y: window.scrollY }, "");
+  document.getElementById(id).scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" });
+  backBtn.hidden = false;
+}
+function goBack(){
+  const y = backStack.pop();
+  if (y != null) scrollTo({ top: y, behavior: motionOK() ? "smooth" : "auto" });
+  backBtn.hidden = backStack.length === 0;
+}
+backBtn.addEventListener("click", goBack);
+addEventListener("popstate", e => { if (e.state && e.state.y != null) { backStack.pop(); scrollTo(0, e.state.y); } });
+$$("[data-jump]").forEach(b => b.addEventListener("click", () => jumpTo(b.dataset.jump)));
+
+/* ==================== 主题与字号 ==================== */
+const root = document.documentElement;
+function applyTheme(t){ if (t) root.dataset.theme = t; else delete root.dataset.theme; store.set("hp-theme", t || ""); }
+applyTheme(store.get("hp-theme"));
+$("#themeBtn").addEventListener("click", () => {
+  const cur = root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  applyTheme(cur === "dark" ? "light" : "dark");
+});
+let fs = +(store.get("hp-fs") || 1);
+root.dataset.fs = fs;
+$("#fsUp").addEventListener("click", () => { fs = Math.min(3, fs + 1); root.dataset.fs = fs; store.set("hp-fs", fs); });
+$("#fsDown").addEventListener("click", () => { fs = Math.max(1, fs - 1); root.dataset.fs = fs; store.set("hp-fs", fs); });
+
+/* ==================== 阅读进度 ==================== */
+const resumeTip = $("#resumeTip");
+let savedY = +(store.get("hp-y") || 0);
+if (savedY > 600) resumeTip.hidden = false;
+resumeTip.addEventListener("click", () => { scrollTo({ top: savedY, behavior: motionOK() ? "smooth" : "auto" }); resumeTip.hidden = true; });
+let tick = false;
+addEventListener("scroll", () => {
+  if (tick) return; tick = true;
+  setTimeout(() => { store.set("hp-y", String(window.scrollY)); tick = false; }, 800);
+}, { passive: true });
+
+/* ==================== 先猜再看（选项型） ==================== */
+$$("[data-guess] .btn[data-opt]").forEach(b => {
+  b.addEventListener("click", () => {
+    const g = b.closest("[data-guess]");
+    g.querySelectorAll(".btn[data-opt]").forEach(x => x.disabled = true);
+    b.classList.add("primary");
+    g.querySelector(".reveal").hidden = false;
+  });
+});
+/* 场景 6 的滑块型猜测 */
+const g6r = $("#g6range"), g6o = $("#g6out");
+g6r.addEventListener("input", () => g6o.textContent = g6r.value + " 倍");
+$("#g6btn").addEventListener("click", () => {
+  g6r.disabled = true; $("#g6btn").disabled = true;
+  $("#g6btn").closest("[data-guess]").querySelector(".reveal").hidden = false;
+});
+
+/* ==================== 场景 2：流水线热点 ==================== */
+const PIPE = {
+  q: "① 查询：MySQL 先解析优化。代价超过阈值且 Hermes 支持，就生成带类型标注的 SQL 发给 Hermes 执行，结果经 Arrow 回传。",
+  r: "② 复制：订阅 MySQL 的 binlog。每个事件解析、转换后进最新的 Row-based Delta；事务按依赖关系可乱序提交。",
+  c: "③ Checkpoint：Main store 按 RowGroup 记录 version timestamp，只备份比上次 checkpoint 更新的组，写进 Object Storage；恢复时批量装回。"
+};
+$$(".hot").forEach(h => {
+  const act = () => {
+    $$(".hot").forEach(x => x.classList.remove("on"));
+    h.classList.add("on");
+    $("#pipeText").textContent = PIPE[h.dataset.pipe];
+  };
+  h.addEventListener("click", act);
+  h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+});
+
+/* ==================== 场景 3：写放大对比台（示意） ==================== */
+const sim = { n: 0, waM: 0, waB: 0, buf: 0, cdM: 0, cdB: 0 };
+const TOUCH = 2; // 每次均匀更新命中 2 个 RowGroup（示意）
+function simRender(){
+  $("#waMerge").textContent = sim.waM;
+  $("#waBytes").textContent = sim.waB;
+  $("#bufN").textContent = sim.buf;
+  $("#cdMerge").textContent = sim.cdM;
+  $("#cdBytes").textContent = sim.cdB;
+  $("#waBar").style.width = Math.min(100, sim.waB / 12 * 100) + "%";
+  $("#cdBar").style.width = Math.min(100, sim.cdB / 12 * 100) + "%";
+}
+$("#doUpdate").addEventListener("click", () => {
+  sim.n++;
+  sim.waM += TOUCH; sim.waB += TOUCH;      // 无中间层：每次更新立刻重写
+  sim.buf++;                                // 有中间层：先攒着
+  simRender();
+});
+$("#doMerge").addEventListener("click", () => {
+  if (sim.buf === 0) return;
+  const groups = Math.min(sim.buf * TOUCH, 4); // 批量合并会去重，命中组数有上限（示意）
+  sim.cdM += groups; sim.cdB += groups; sim.buf = 0;
+  simRender();
+});
+$("#resetSim").addEventListener("click", () => { Object.assign(sim, { n:0, waM:0, waB:0, buf:0, cdM:0, cdB:0 }); simRender(); });
+
+/* ==================== 场景 4：归并扫描步进演示 ==================== */
+const MAIN = [1,2,3,4,5,6,7,8,9,10,11,12];
+const CHANGED = { 3: "更新", 7: "删除", 8: "更新" };
+const NEWROWS = [13, 14];
+let step = -1, auto = null;
+function renderRows(){
+  $("#mainRows").innerHTML = MAIN.map((id, i) => {
+    let cls = "chip";
+    if (i < step) cls += CHANGED[id] ? " filtered" : " out";
+    if (i === step) cls += " cur";
+    return `<span class="${cls}">${id}</span>`;
+  }).join("");
+  $("#deltaRows").innerHTML =
+    Object.keys(CHANGED).map(id => `<span class="chip">${id}·${CHANGED[id][0]}</span>`).join("") +
+    NEWROWS.map((id, i) => `<span class="chip new${step > MAIN.length + i ? " out" : ""}">${id}</span>`).join("");
+  const kept = MAIN.slice(0, Math.max(0, Math.min(step, MAIN.length))).filter(id => !CHANGED[id]);
+  const extra = step > MAIN.length ? NEWROWS.slice(0, step - MAIN.length) : [];
+  $("#outRows").innerHTML = kept.concat(extra).map(id => `<span class="chip out">${id}</span>`).join("") ||
+    `<span class="dim" style="font-size:.85rem">（空）</span>`;
+}
+const stepLog = $("#stepLog");
+function doStep(){
+  step++;
+  if (step >= MAIN.length + NEWROWS.length) { step = MAIN.length + NEWROWS.length - 1; stopAuto(); }
+  renderRows();
+  if (step < MAIN.length) {
+    const id = MAIN[step];
+    stepLog.textContent = CHANGED[id]
+      ? `行 ${id}：在 Delta 里有「${CHANGED[id]}」→ merge 时划掉，不进输出（这就是 M−D）。`
+      : `行 ${id}：不在改动集合 → 直接输出。`;
+  } else {
+    const id = NEWROWS[step - MAIN.length];
+    stepLog.textContent = `Main store 扫完。把 Delta 的新行 ${id} 追加到输出末尾。`;
+  }
+  if (step === MAIN.length + NEWROWS.length - 1)
+    stepLog.textContent += " 完成：输出 = (Main store − 改动) + Delta 新行。";
+}
+function stopAuto(){ if (auto) { clearInterval(auto); auto = null; $("#stepAuto").textContent = "自动播放"; } }
+$("#stepNext").addEventListener("click", doStep);
+$("#stepAuto").addEventListener("click", () => {
+  if (auto) return stopAuto();
+  $("#stepAuto").textContent = "暂停";
+  auto = setInterval(() => { if (step >= MAIN.length + NEWROWS.length - 1) stopAuto(); else doStep(); }, motionOK() ? 500 : 900);
+});
+$("#stepReset").addEventListener("click", () => { stopAuto(); step = -1; renderRows();
+  stepLog.textContent = "准备：把 Delta 里的行号 {3, 7, 8} 收集成一个有序集合。"; });
+renderRows();
+
+/* ==================== 场景 6：图表切换 ==================== */
+$("#tabSF100").addEventListener("click", () => {
+  $("#chart100").hidden = false; $("#chart1000").hidden = true;
+  $("#tabSF100").classList.add("primary"); $("#tabSF1000").classList.remove("primary");
+});
+$("#tabSF1000").addEventListener("click", () => {
+  $("#chart100").hidden = true; $("#chart1000").hidden = false;
+  $("#tabSF1000").classList.add("primary"); $("#tabSF100").classList.remove("primary");
+});
+
+/* ==================== 场景 7：更新比例滑块 ==================== */
+const ANCHORS = [[0, 1.0], [0.2, 1.2], [0.5, 1.5], [1.0, 2.0], [3.0, 4.0]];
+function factor(x){
+  for (let i = 1; i < ANCHORS.length; i++) {
+    const [x1, y1] = ANCHORS[i - 1], [x2, y2] = ANCHORS[i];
+    if (x <= x2) return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+  }
+  return 4;
+}
+$("#updRange").addEventListener("input", e => {
+  const x = +e.target.value, f = factor(x);
+  $("#updPct").textContent = x.toFixed(2).replace(/\.?0+$/, "") + "%";
+  $("#updF").textContent = f.toFixed(1);
+  $("#updC").textContent = (11.5 * f).toFixed(1);
+  $("#updVerdict").textContent =
+    x <= 0.2 ? "几乎无感（慢 ≤20%）。Hermes 靠勤快 merge，平时就维持在这个区间。" :
+    x <= 0.6 ? "开始变慢。过滤仍然便宜，变贵的是 scan Delta 本身。" :
+    x <= 1.1 ? "Scan 慢了近一倍。复杂查询里不一定明显，因为瓶颈不全在扫描。" :
+               "已经很贵了（3% 时约 4 倍）。该让 Update Propagation 加班了。";
+});
+
+/* ==================== 自测 ==================== */
+$$(".quizq").forEach(q => {
+  q.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
+    q.querySelectorAll(".opt").forEach(x => {
+      x.disabled = true;
+      if (x.dataset.ok === "1") x.classList.add("right");
+    });
+    if (b.dataset.ok !== "1") b.classList.add("wrong");
+    q.querySelector(".why").hidden = false;
+  }));
+});
+
+/* ==================== 键盘 ==================== */
+const ORDER = ["hero","s1","s2","s3","s4","s5","s6","s7","quiz"];
+addEventListener("keydown", e => {
+  if (e.key === "Escape" && !citeCard.hidden) return closeCite();
+  if (e.target.matches("input,textarea") || e.metaKey || e.ctrlKey) return;
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const cur = ORDER.reduce((best, id) => {
+    const el = document.getElementById(id);
+    return el.getBoundingClientRect().top <= 80 ? id : best;
+  }, "hero");
+  let i = ORDER.indexOf(cur) + (e.key === "ArrowRight" ? 1 : -1);
+  i = Math.max(0, Math.min(ORDER.length - 1, i));
+  jumpTo(ORDER[i]);
+});
+</script>
+</body>
+</html>
