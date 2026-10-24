@@ -12,7 +12,7 @@ categories:
     - Java
 series: []
 date: '2017-05-02T10:10:00+08:00'
-lastmod: '2017-05-02T110:30:20+08:00'
+lastmod: '2017-05-02T10:30:20+08:00'
 featuredImage: ''
 draft: false
 ---
